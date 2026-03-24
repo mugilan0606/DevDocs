@@ -32,8 +32,8 @@ from flask import Flask, jsonify, request, send_file, Response
 from flask_cors import CORS
 
 app = Flask(__name__)
-_allowed_origins = os.getenv("CORS_ORIGINS", "*")
-CORS(app, origins=_allowed_origins.split(","))
+_allowed_origins = os.getenv("CORS_ORIGINS", "").strip()
+CORS(app, origins=_allowed_origins.split(",") if _allowed_origins else "*")
 
 JOBS_DIR = os.path.join(os.path.dirname(__file__), "jobs")
 os.makedirs(JOBS_DIR, exist_ok=True)
