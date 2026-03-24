@@ -251,7 +251,8 @@ export default function App() {
   const [apiKeySaved,  setApiKeySaved]  = useState(false);
   const [savingKey,    setSavingKey]    = useState(false);
   const [gptModel,     setGptModel]     = useState("gpt-3.5-turbo");
-  const [ollamaModel,  setOllamaModel]  = useState("codellama");
+  const [groqModel,    setGroqModel]    = useState("llama-3.1-70b-versatile");
+  const [groqKey,      setGroqKey]      = useState("");
 
   const [jobId,     setJobId]     = useState(null);
   const [job,       setJob]       = useState(null);
@@ -443,14 +444,15 @@ export default function App() {
   async function submit() {
     if (!repoUrl.trim())                      { setError("Enter a GitHub URL."); return; }
     if (provider === "gpt" && !apiKey.trim()) { setError("Enter your OpenAI API key."); return; }
+    if (provider === "groq" && !groqKey.trim()) { setError("Enter your Groq API key. Get one free at console.groq.com"); return; }
     setError(""); setLoading(true); setJob(null); setTabData(null); setActiveTab("logs");
     try {
       var res  = await fetch(API + "/generate", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           repo_url: repoUrl.trim(), provider,
-          api_key:  apiKey.trim(),
-          model:    provider === "gpt" ? gptModel : ollamaModel,
+          api_key:  provider === "groq" ? groqKey.trim() : apiKey.trim(),
+          model:    provider === "gpt" ? gptModel : groqModel,
           user_id:  user ? user.user_id : "",
         }),
       });
@@ -482,8 +484,8 @@ export default function App() {
         body: JSON.stringify({
           query: q,
           provider: provider,
-          api_key: apiKey.trim(),
-          model: provider === "gpt" ? gptModel : ollamaModel,
+          api_key: provider === "groq" ? groqKey.trim() : apiKey.trim(),
+          model: provider === "gpt" ? gptModel : groqModel,
           user_id: user ? user.user_id : "",
           history: chatMessages.concat([userMsg]).slice(-10),
         }),
@@ -551,15 +553,15 @@ export default function App() {
         <div style={S.section}>
           <label style={S.label}>LLM Provider</label>
           <div style={S.providerRow}>
-            {["gpt","ollama"].map(function(p) {
+            {["gpt","groq"].map(function(p) {
               return (
                 <button key={p} style={Object.assign({}, S.providerBtn, provider===p ? S.providerActive : {})} onClick={function() { setProvider(p); }}>
-                  {p === "gpt" ? "🤖 GPT (Paid)" : "🦙 Ollama (Free)"}
+                  {p === "gpt" ? "🤖 GPT (Paid)" : "🦙 Groq/Llama (Free)"}
                 </button>
               );
             })}
           </div>
-          {provider === "ollama" && <p style={S.hint}>Requires <code style={S.code}>ollama serve</code> running locally.</p>}
+          {provider === "groq" && <p style={S.hint}>Free API key from <a href="https://console.groq.com" target="_blank" rel="noreferrer" style={{ color:"#7dd3fc" }}>console.groq.com</a></p>}
         </div>
 
         {/* Form */}
@@ -601,16 +603,20 @@ export default function App() {
             </div>
           ) : (
             <div>
-              <label style={S.label}>Ollama Model</label>
-              <select style={S.select} value={ollamaModel} onChange={function(e) { setOllamaModel(e.target.value); }}>
-                <option value="codellama">codellama</option>
-                <option value="llama3">llama3</option>
-                <option value="mistral">mistral</option>
-                <option value="deepseek-coder">deepseek-coder</option>
-                <option value="phi3">phi3</option>
-                <option value="gemma">gemma</option>
+              <label style={S.label}>Groq API Key</label>
+              <input
+                style={S.input}
+                type="password"
+                placeholder="gsk_..."
+                value={groqKey}
+                onChange={function(e) { setGroqKey(e.target.value); }}
+              />
+              <label style={S.label}>Model</label>
+              <select style={S.select} value={groqModel} onChange={function(e) { setGroqModel(e.target.value); }}>
+                <option value="llama-3.1-70b-versatile">Llama 3.1 70B — best quality</option>
+                <option value="llama-3.3-70b-versatile">Llama 3.3 70B — newest</option>
+                <option value="llama-3.1-8b-instant">Llama 3.1 8B — fastest</option>
               </select>
-              <p style={S.hint}>Make sure you have run ollama pull {ollamaModel}</p>
             </div>
           )}
 
@@ -648,7 +654,7 @@ export default function App() {
                       <div style={S.histMeta}>
                         <span style={S.histRepo}>{h.repo_url.replace("https://github.com/","")}</span>
                         <span style={S.histDate}>
-                          {h.provider === "ollama" ? "🦙" : "🤖"} {new Date(h.created_at).toLocaleDateString()}
+                          {h.provider === "groq" ? "🦙" : "🤖"} {new Date(h.created_at).toLocaleDateString()}
                         </span>
                       </div>
                       {user && (

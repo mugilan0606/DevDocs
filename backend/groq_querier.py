@@ -1,34 +1,52 @@
 """
-ollama_querier.py — Free/local LLM via Ollama
+groq_querier.py — Free cloud LLM via Groq (Llama models)
 Same interface as gpt_querier.py so server.py can swap them.
-Requires: ollama serve  (default: http://localhost:11434)
+Free tier: 30 req/min at https://console.groq.com
 """
 
-import os, re, ast, requests
+import os, re, ast, time, requests
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-OLLAMA_MODEL    = os.getenv("OLLAMA_MODEL", "codellama")
-TIMEPASS_DIR    = "TimePass"
+GROQ_API_KEY  = os.getenv("GROQ_API_KEY", "")
+GROQ_MODEL    = os.getenv("GROQ_MODEL", "llama-3.1-70b-versatile")
+GROQ_API_URL  = "https://api.groq.com/openai/v1/chat/completions"
+TIMEPASS_DIR  = "TimePass"
+
+_last_call = [0.0]
+_MIN_INTERVAL = 2.2  # ~27 req/min, safely under 30 req/min free limit
 
 
-def query_ollama(prompt: str, model: str = None) -> str:
-    m = model or OLLAMA_MODEL
+def query_groq(prompt: str, model: str = None, max_tokens: int = 1200) -> str:
+    api_key = GROQ_API_KEY
+    m = model or GROQ_MODEL
+    elapsed = time.time() - _last_call[0]
+    if elapsed < _MIN_INTERVAL:
+        time.sleep(_MIN_INTERVAL - elapsed)
+    _last_call[0] = time.time()
     try:
         resp = requests.post(
-            f"{OLLAMA_BASE_URL}/api/generate",
-            json={"model": m, "prompt": prompt, "stream": False},
-            timeout=180,
+            GROQ_API_URL,
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            json={
+                "model": m,
+                "messages": [{"role": "user", "content": prompt}],
+                "max_tokens": max_tokens,
+                "temperature": 0.3,
+            },
+            timeout=120,
         )
+        if resp.status_code == 429:
+            time.sleep(5)
+            return query_groq(prompt, model, max_tokens)
         resp.raise_for_status()
-        return resp.json().get("response", "").strip()
+        return resp.json()["choices"][0]["message"]["content"].strip()
     except requests.exceptions.ConnectionError:
-        return "[ERROR] Cannot connect to Ollama. Run: ollama serve"
+        return "[ERROR] Cannot connect to Groq API. Check your internet connection."
     except Exception as e:
         return f"[ERROR] {e}"
 
-# Alias so server.py can call query_gpt or query_ollama uniformly
-query_gpt = query_ollama
+
+query_gpt = query_groq
 
 
 def _extract_source(file_path: str, func_name: str):
@@ -156,12 +174,12 @@ def generate_docs_for_repo(directory_json, repo_dir, log_fn=None, max_workers=2)
         kind, payload = item
         if kind == "summary":
             node, file_name, snippet, cache = payload
-            resp = query_ollama(_build_file_summary_prompt(file_name, snippet))
+            resp = query_groq(_build_file_summary_prompt(file_name, snippet))
             with open(cache, "w") as cf: cf.write(resp)
             node["summary"] = resp
         else:
             fe, fn, fname, src, cache = payload
-            resp = query_ollama(build_prompt(fn, src, fname))
+            resp = query_groq(build_prompt(fn, src, fname))
             with open(cache, "w") as cf: cf.write(resp)
             fe[fn] = resp
         done[0] += 1
@@ -169,8 +187,9 @@ def generate_docs_for_repo(directory_json, repo_dir, log_fn=None, max_workers=2)
             label = payload[1] if kind == "summary" else f"{fname}::{fn}"
             log_fn(f"  [{done[0]}/{total}] {label}")
 
+    # max_workers=1 to respect rate limits on Groq free tier
     if all_tasks:
-        with ThreadPoolExecutor(max_workers=max_workers) as pool:
+        with ThreadPoolExecutor(max_workers=1) as pool:
             for f in as_completed([pool.submit(run_task, t) for t in all_tasks]):
                 if f.exception() and log_fn: log_fn(f"[WARN] {f.exception()}")
     elif log_fn:
@@ -179,7 +198,7 @@ def generate_docs_for_repo(directory_json, repo_dir, log_fn=None, max_workers=2)
 
 
 def generate_repo_overview(repo_dir, dir_string, readme):
-    return query_ollama(f"""Give a thorough overview (4-6 paragraphs) of this software repository covering:
+    return query_groq(f"""Give a thorough overview (4-6 paragraphs) of this software repository covering:
 1. Project purpose and who it's for
 2. Technology stack and why each was chosen
 3. Key features
@@ -193,7 +212,7 @@ Directory Structure:
 
 
 def generate_architecture_summary(dir_string, code_flow_json):
-    return query_ollama(f"""Describe the software architecture of this project (4-5 paragraphs):
+    return query_groq(f"""Describe the software architecture of this project (4-5 paragraphs):
 1. Architectural style (MVC, layered, etc.)
 2. Module breakdown and responsibilities
 3. Data flow
@@ -231,14 +250,14 @@ def generate_dependency_analysis(repo_dir):
                 if f in dep_names and len(dep_files_content) < 5:
                     dep_files_content.append(f"### {f}\n{_read_file_safe(os.path.join(root, f), 2000)}")
     combined = "\n\n".join(dep_files_content) if dep_files_content else "No dependency files found."
-    return query_ollama(f"""Analyse the dependency files below. For each dependency explain: what it is, why it's used here, and alternatives.
+    return query_groq(f"""Analyse the dependency files below. For each dependency explain: what it is, why it's used here, and alternatives.
 
 Dependency files:
 {combined[:4000]}""")
 
 
 def generate_entry_points(repo_dir, dir_string):
-    return query_ollama(f"""Identify entry points and write a setup guide for this project covering:
+    return query_groq(f"""Identify entry points and write a setup guide for this project covering:
 1. Main files to run and how
 2. Environment setup needed
 3. Installation commands
@@ -257,7 +276,7 @@ def generate_code_quality_notes(repo_dir):
                 c = _read_file_safe(os.path.join(root, f), 1500)
                 if c: snippets.append(f"# {f}\n{c}")
     combined = chr(10).join(snippets)[:4000] if snippets else "No source code files found."
-    return query_ollama(f"""Review this code and report:
+    return query_groq(f"""Review this codebase and report:
 1. Bugs and logic errors
 2. Missing error handling
 3. Security concerns

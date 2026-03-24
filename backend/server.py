@@ -33,7 +33,7 @@ from flask_cors import CORS
 
 app = Flask(__name__)
 _allowed_origins = os.getenv("CORS_ORIGINS", "").strip()
-CORS(app, origins=_allowed_origins.split(",") if _allowed_origins else "*")
+CORS(app, origins=[o.strip().rstrip("/") for o in _allowed_origins.split(",") if o.strip()] or "*")
 
 JOBS_DIR = os.path.join(os.path.dirname(__file__), "jobs")
 os.makedirs(JOBS_DIR, exist_ok=True)
@@ -269,22 +269,23 @@ def run_pipeline(job_id: str, repo_url: str, model: str):
         log(job_id, "Directory structure parsed.")
 
         # ── Step 3: LLM querying ───────────────────────────────────────────────
-        if provider == "ollama":
-            log(job_id, f"Using Ollama (model={model}) ...")
-            oq = load_module("ollama_querier", src_dir)
-            oq.OLLAMA_MODEL = model
-            directory_json = oq.generate_docs_for_repo(
+        if provider == "groq":
+            log(job_id, f"Using Groq/Llama (model={model}) ...")
+            gq_free = load_module("groq_querier", src_dir)
+            gq_free.GROQ_MODEL = model
+            gq_free.GROQ_API_KEY = jobs[job_id].get("api_key", "")
+            directory_json = gq_free.generate_docs_for_repo(
                 directory_json, repo_dir=local_dir,
                 log_fn=lambda msg: log(job_id, msg),
             )
             dir_string = dsc.get_finalized_text_string(local_dir, directory_json)
             readme     = _read_readme(local_dir)
-            log(job_id, "Generating repo-level analysis via Ollama ...")
-            overview     = oq.generate_repo_overview(local_dir, dir_string, readme)
-            architecture = oq.generate_architecture_summary(dir_string, "")
-            dependencies = oq.generate_dependency_analysis(local_dir)
-            entry_points = oq.generate_entry_points(local_dir, dir_string)
-            code_quality = oq.generate_code_quality_notes(local_dir)
+            log(job_id, "Generating repo-level analysis via Groq ...")
+            overview     = gq_free.generate_repo_overview(local_dir, dir_string, readme)
+            architecture = gq_free.generate_architecture_summary(dir_string, "")
+            dependencies = gq_free.generate_dependency_analysis(local_dir)
+            entry_points = gq_free.generate_entry_points(local_dir, dir_string)
+            code_quality = gq_free.generate_code_quality_notes(local_dir)
         else:
             log(job_id, f"Using GPT (model={model}) ...")
             os.environ["OPENAI_API_KEY"] = jobs[job_id].get("api_key", "")
@@ -317,9 +318,9 @@ def run_pipeline(job_id: str, repo_url: str, model: str):
             )
 
             # Pick the right query function based on provider
-            if provider == "ollama":
+            if provider == "groq":
                 def _qfn(prompt, max_tokens=800):
-                    return oq.query_ollama(prompt)
+                    return gq_free.query_groq(prompt)
             else:
                 def _qfn(prompt, max_tokens=800):
                     return gq.query_gpt(prompt, max_tokens=max_tokens)
@@ -425,7 +426,7 @@ def generate():
     repo_url = (data.get("repo_url") or "").strip()
     provider = (data.get("provider") or "gpt").strip()
     api_key  = (data.get("api_key") or "").strip()
-    model    = (data.get("model") or ("gpt-3.5-turbo" if provider == "gpt" else "codellama")).strip()
+    model    = (data.get("model") or ("gpt-3.5-turbo" if provider == "gpt" else "llama-3.1-70b-versatile")).strip()
     user_id  = (data.get("user_id") or "").strip()
 
     if not repo_url:
@@ -460,6 +461,11 @@ def generate():
 
     if provider == "gpt" and not api_key:
         return jsonify({"error": "OpenAI API key is required for GPT mode"}), 400
+
+    if provider == "groq" and not api_key:
+        api_key = (os.getenv("GROQ_API_KEY") or "").strip()
+    if provider == "groq" and not api_key:
+        return jsonify({"error": "Groq API key is required. Get a free one at console.groq.com"}), 400
 
     job_id = str(uuid.uuid4())[:8]
     jobs[job_id] = {
@@ -747,8 +753,12 @@ def chat(job_id):
     rag = load_module("rag_engine", src_dir)
 
     try:
-        if provider == "ollama":
-            result = rag.answer_with_ollama(query, rag_chunks, model=model, chat_history=history)
+        if provider == "groq":
+            if not api_key:
+                api_key = (os.getenv("GROQ_API_KEY") or "").strip()
+            if not api_key:
+                return jsonify({"error": "Groq API key required for chat."}), 400
+            result = rag.answer_with_groq(query, rag_chunks, api_key=api_key, model=model, chat_history=history)
         else:
             if not api_key:
                 user_id = (data.get("user_id") or "").strip()

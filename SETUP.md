@@ -41,13 +41,18 @@ VITE_GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
 npm run dev   # http://localhost:3000
 ```
 
-### 3. Ollama (free mode)
+### 3. Groq (free mode)
+
+1. Go to [console.groq.com](https://console.groq.com) and sign up (free).
+2. Create an API key.
+3. Paste the key in the UI when selecting the "Groq/Llama (Free)" provider, or set it as an env var:
 
 ```bash
-brew install ollama        # macOS
-ollama serve               # keep running in a terminal
-ollama pull codellama      # or llama3, mistral, deepseek-coder, phi3, gemma
+export GROQ_API_KEY=gsk_...
 ```
+
+Available models: `llama-3.1-70b-versatile`, `llama-3.3-70b-versatile`, `llama-3.1-8b-instant`.
+Free tier: 30 requests/minute.
 
 ### Google OAuth setup
 
@@ -100,7 +105,7 @@ In the Google Cloud Console, add your Vercel domain to **Authorised JavaScript o
 | Feature | Notes |
 |---|---|
 | GPT mode | Enter API key per-run in UI, or set OPENAI_API_KEY env |
-| Ollama mode | Free, local — needs `ollama serve` running |
+| Groq/Llama mode | Free cloud LLM — get a key at console.groq.com |
 | Google Sign-in | Requires GOOGLE_CLIENT_ID |
 | RAG Chat | Ask questions about the analyzed repo |
 | Account history | SQLite + Google Sign-in |

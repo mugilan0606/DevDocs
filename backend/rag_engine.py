@@ -225,10 +225,10 @@ def answer_with_gpt(query: str, chunks: list[dict], api_key: str, model: str = "
     return {"answer": answer, "sources": sources}
 
 
-def answer_with_ollama(query: str, chunks: list[dict], model: str = "codellama",
-                       base_url: str = "http://localhost:11434",
-                       chat_history: list[dict] = None) -> dict:
-    """Retrieve relevant chunks and generate an answer using Ollama."""
+def answer_with_groq(query: str, chunks: list[dict], api_key: str,
+                     model: str = "llama-3.1-70b-versatile",
+                     chat_history: list[dict] = None) -> dict:
+    """Retrieve relevant chunks and generate an answer using Groq (free Llama)."""
     import requests
 
     relevant = retrieve(query, chunks, top_k=6)
@@ -236,14 +236,21 @@ def answer_with_ollama(query: str, chunks: list[dict], model: str = "codellama",
 
     try:
         resp = requests.post(
-            f"{base_url}/api/generate",
-            json={"model": model, "prompt": prompt, "stream": False},
-            timeout=180,
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            json={
+                "model": model,
+                "messages": [
+                    {"role": "system", "content": "You are an expert code assistant with deep knowledge of the repository being discussed."},
+                    {"role": "user", "content": prompt},
+                ],
+                "max_tokens": 1000,
+                "temperature": 0.2,
+            },
+            timeout=60,
         )
         resp.raise_for_status()
-        answer = resp.json().get("response", "").strip()
-    except requests.exceptions.ConnectionError:
-        answer = "[ERROR] Cannot connect to Ollama. Run: ollama serve"
+        answer = resp.json()["choices"][0]["message"]["content"].strip()
     except Exception as e:
         answer = f"[ERROR] {e}"
 
