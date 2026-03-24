@@ -1,0 +1,42 @@
+# DevDocs.ai — full requirements
+# Install with: pip install -r requirements.txt
+
+# Web / API
+flask
+flask-restful
+flask-cors
+pymongo
+flask-pymongo
+
+# HTTP (for Ollama queries)
+requests
+
+# PDF generation
+reportlab
+
+# Code-flow graph
+pydot
+networkx
+matplotlib
+
+# Image generation (directory tree PNG)
+Pillow
+
+# HTML parsing (parser_1)
+beautifulsoup4
+
+# ML / fine-tuning (Train_and_generate + comment_gen — optional)
+# Comment these out if you only want the doc-gen pipeline
+transformers
+datasets
+torch
+tensorflow
+scikit-learn
+numpy
+pandas
+joblib
+
+pymongo
+google-auth
+boto3
+python-dotenv

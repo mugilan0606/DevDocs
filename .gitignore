@@ -1,0 +1,35 @@
+# Secrets & credentials — NEVER commit these
+.env
+.env.*
+!.env.example
+credentials/
+*.csv
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Node
+node_modules/
+dist/
+
+# Backend runtime data
+backend/jobs/
+backend/*.db
+backend/*.sqlite
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Build artifacts
+build/
+*.log

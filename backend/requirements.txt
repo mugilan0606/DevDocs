@@ -1,0 +1,10 @@
+# DevDocs.ai backend — core pipeline
+flask
+flask-cors
+requests
+reportlab
+Pillow
+google-auth
+boto3
+python-dotenv
+gunicorn

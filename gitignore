@@ -1,0 +1,39 @@
+# ── Secrets — NEVER commit these ──────────────────────────────────────────────
+.env
+backend/.env
+*.env
+
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+
+# ── Generated job data (cloned repos, PDFs, logs) ─────────────────────────────
+backend/jobs/
+backend/TimePass/
+backend/code_repo/
+backend/code_flowchart/
+backend/directory_structure.json
+backend/finalized_directory_structure.txt
+backend/directory_tree.png
+
+# ── Node / Frontend ───────────────────────────────────────────────────────────
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# ── macOS ─────────────────────────────────────────────────────────────────────
+.DS_Store
+.AppleDouble
+
+# ── IDEs ──────────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
