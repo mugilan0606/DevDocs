@@ -672,6 +672,10 @@ export default function App() {
             </div>
           )}
         </div>
+
+        <div style={S.sidebarFooter}>
+          Copyright © 2026 Mugilan Arulvanan. All rights reserved.
+        </div>
       </aside>
 
       {/* ── Main ── */}
@@ -894,6 +898,7 @@ const S = {
   histDate:       { fontSize:9, color:"#475569" },
   dot:            { width:7, height:7, borderRadius:"50%", flexShrink:0 },
   deleteBtn:      { background:"transparent", border:"none", color:"#475569", cursor:"pointer", fontSize:13, padding:"2px 4px", flexShrink:0, opacity:0.6 },
+  sidebarFooter:  { marginTop:"auto", padding:"14px 20px 18px", borderTop:"1px solid #1e293b", fontSize:10, color:"#475569", lineHeight:1.6, textAlign:"center" },
   main:           { flex:1, display:"flex", flexDirection:"column", overflow:"hidden" },
   empty:          { flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:10, opacity:.4 },
   homeHero:       { flex:1, display:"flex", alignItems:"center", justifyContent:"center", padding:24 },
