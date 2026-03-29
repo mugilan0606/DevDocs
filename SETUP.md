@@ -53,51 +53,6 @@ export GROQ_API_KEY=gsk_...
 
 Available models: `llama-3.1-70b-versatile`, `llama-3.3-70b-versatile`, `llama-3.1-8b-instant`.
 Free tier: 30 requests/minute.
-
-### Google OAuth setup
-
-1. Go to https://console.cloud.google.com → APIs & Services → Credentials
-2. Create an OAuth 2.0 Client ID (Web application)
-3. Add `http://localhost:3000` to **Authorised JavaScript origins**
-4. Copy the Client ID into both `backend/.env` and `frontend/.env`
-
----
-
-## Deployment (split: Vercel + Render)
-
-### Backend → Render (free tier)
-
-1. Push the repo to GitHub.
-2. Go to https://dashboard.render.com → **New → Web Service**.
-3. Connect your GitHub repo.
-4. Render will auto-detect `render.yaml`. If not, set manually:
-   - **Root Directory**: `backend`
-   - **Build Command**: `pip install -r requirements.txt`
-   - **Start Command**: `gunicorn server:app --bind 0.0.0.0:$PORT --timeout 300 --workers 2`
-5. Add environment variables in the Render dashboard:
-   - `GOOGLE_CLIENT_ID`
-   - `OPENAI_API_KEY` (optional — users can enter per-run)
-   - `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `S3_BUCKET`
-   - `CORS_ORIGINS` → set to your Vercel frontend URL, e.g. `https://devdocs-ai.vercel.app`
-6. Deploy. Note the service URL (e.g. `https://devdocs-backend.onrender.com`).
-
-> **Note:** Render free tier spins down after 15 min of inactivity. First request after idle takes ~30s.
-
-### Frontend → Vercel (free tier)
-
-1. Go to https://vercel.com → **New Project** → import same GitHub repo.
-2. Set **Root Directory** to `frontend`.
-3. Framework preset will auto-detect as **Vite**.
-4. Add environment variables:
-   - `VITE_GOOGLE_CLIENT_ID` → same Google client ID
-   - `VITE_API_URL` → your Render backend URL + `/api`, e.g. `https://devdocs-backend.onrender.com/api`
-5. Deploy.
-
-### Google OAuth — add production origins
-
-In the Google Cloud Console, add your Vercel domain to **Authorised JavaScript origins**:
-- `https://your-app.vercel.app`
-
 ---
 
 ## Feature Summary
